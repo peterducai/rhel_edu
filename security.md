@@ -324,3 +324,12 @@ Restart the auditd service to update its configuration. When done, log off from 
 
 ## Reporting
 
+> aureport --login
+
+> ausearch -i -a 188
+
+> ausearch -a 188 --raw|aureport -i --file
+
+> aureport --executable --summary
+
+> ausearch -m LOGIN --format csv > results.csv
