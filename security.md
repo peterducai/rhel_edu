@@ -333,3 +333,85 @@ Restart the auditd service to update its configuration. When done, log off from 
 > aureport --executable --summary
 
 > ausearch -m LOGIN --format csv > results.csv
+
+
+## Setting File System Rules
+
+The -w option takes the name of a file or directory to watch. If the path is a directory, then the rule
+matches recursively all contents and subdirectories in that directory excluding subdirectories that
+are mount points. The rule will not cross file systems.
+The -p option takes a list of accesses to monitor by permission type.
+• r for read access
+• w for write access
+• x for execute access
+• a for changes to attributes
+The -k option takes a key to set on the audit record to make it easier to find with a specific
+ausearch query.
+
+> auditctl -w file -p permissions -k key
+
+> auditctl -w /etc/passwd -p wa -k user-edit
+
+> auditctl -w /etc/sysconfig -p rwa -k sysconfig-access
+
+Audit all executions of binaries in the /bin directory.
+
+> auditctl -w /bin -p x
+
+## Setting Control Rules
+
+The final class of audit rule is the control rule. These are used to modify the kernel configuration of
+Linux Audit. These rules tend to be short and simple and are usually set at the top of the rules list,
+with the exception of the -e 2 rule to prevent further changes to the audit rule set.
+Some examples of control rules include:
+• Remove all rules.
+
+> auditctl -D
+
+• Remove a file system rule monitoring /bin. The path (/bin) must match the rule exactly.
+
+> auditctl -W /bin
+
+• Set the currently loaded rules to be immutable. This means that the rules cannot be changed again until the system is rebooted.
+
+> auditctl -e 2
+
+## MAKING RULES IMMUTABLE
+
+With the auditctl -e [0|1|2] command, you can influence the current auditing mode. Use
+the auditctl -e -0 command to disable auditing. Use the auditctl -e 1 command to
+enable auditing again. Use the auditctl -e 2 to configure your rules as immutable, so you
+cannot longer add, remove or change rules, or stop the auditing.
+
+# AIDE
+
+> yum install aide
+
+AIDE ships with a reasonably well-configured default /etc/aide.conf file that
+you may use to build an initial database. If you want or need to tune exactly what
+AIDE monitors, you should modify the file before building or updating your AIDE
+database.
+
+> aide --init
+
+Verifying Integrity with AIDE
+
+> aide --check
+
+Updating the AIDE Database
+It is important to update the AIDE database after expected changes are made to the system.
+For example, a package update or authorized configuration file adjustment may change time
+stamps, permissions, or checksums on monitored files. To avoid AIDE reporting false positives,
+you need to update the database to reflect these authorized changes. After confirming that all
+remaining changes reported by AIDE are authorized, run the following command to update the
+AIDE database.
+
+[root@demo]# aide --update
+
+IMPORTANT
+Do not forget to replace the old database file with the updated file. Otherwise, AIDE
+will continue to use the old database file as its baseline for checks.
+The locations of these files are specified in your /etc/aide.conf file, as discussed
+earlier in this section. The database used for checks defaults to /var/lib/aide/
+aide.db.gz. By default, the --update option writes an updated database to /
+var/lib/aide/aide.db.new.gz.
