@@ -55,6 +55,12 @@ PasswordAuthentication no
 
 > user ALL=(ALL) NOPASSWD:ALL
 
+### Pass 
+
+Force immediate password expiration by running the following command as root:
+
+> chage -d 0 username
+
 
 # Selinux users and roles
 
@@ -224,8 +230,93 @@ It is highly recommended to configure PAMs using the authconfig tool instead of 
 
 The man -k pam_ command returns a long list of related man pages.
 
-## SSSD
+## switch to SSSD
 
 > yum -y install sssd
 ...output omitted...
 > authconfig --enablesssd --enablesssdauth --update
+
+## Summary 
+
+• PAM stores most of its configuration files in /etc/pam.d/.
+• A PAM-enabled application invokes the rules in each management group, auth, account,
+password, and session, at different times during the user authentication and authorization
+process.
+• The authconfig command is the recommended way of updating the PAM configuration.
+• Before any modification, back up the PAM configuration with authconfig --
+savebackup=backupdir and open an extra root session to recover from errors.
+• The pam_pwquality module uses the /etc/security/pwquality.conf configuration file
+to enforce your organization password complexity requirements.
+• The pam_faillock module locks accounts after too many consecutive failed attempts. You
+use the authconfig --enablefaillock --faillockargs="parameters" command to
+configure it.
+
+
+# Auditd
+
+> systemctl status auditd
+
+```
+vi /etc/audit/auditd.conf
+...output omitted...
+log_format = ENRICHED
+flush = INCREMENTAL_ASYNC
+freq = 50
+name_format = HOSTNAME
+...output omitted...
+```
+
+> service auditd restart
+
+> tail /var/log/audit/audit.log
+
+## Remote client
+
+Configure the Audit service on servera to send audit messages to the Audit service on serverb.
+
+> yum install audispd-plugins
+
+In the /etc/audisp/plugins.d/au-remote.conf file, set the value for the active option to yes to enable remote logging.
+
+```
+vi /etc/audisp/plugins.d/au-remote.conf
+...output omitted...
+active = yes
+...output omitted...
+```
+
+In the /etc/audisp/audisp-remote.conf file, set the remote_server option to the IP address of the remote logging server in our environment
+
+serverb.lab.example.com. Set the port to be used on the remote logging server, which is 60 by default.
+
+vi /etc/audisp/audisp-remote.conf
+...output omitted...
+remote_server = 172.25.250.11
+port = 60
+...output omitted...
+```
+
+Restart the auditd service to update its configuration. When done, log off from servera.
+
+> service auditd restart
+
+## Remote server
+
+```
+vi /etc/audit/auditd.conf
+...output omitted...
+tcp_listen_port = 60
+...output omitted...
+```
+
+Open TCP port 60 to enable access to the Audit server.
+
+> firewall-cmd --zone=public --add-port=60/tcp --permanent
+
+
+> firewall-cmd --reload
+
+
+Restart the auditd service to update its configuration. When done, log off from serverb.
+
+> service auditd restart
