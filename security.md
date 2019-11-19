@@ -56,6 +56,59 @@ PasswordAuthentication no
 > user ALL=(ALL) NOPASSWD:ALL
 
 
+# Selinux users and roles
+
+Create a new user that is mapped to guest_u (i.e., no internet, no sudo/su or most other setuid/setgid apps, no X)
+
+> useradd -Z guest_u newuserbob
+
+Make it so guest_u & xguest_u won't be allowed to execute anything in /tmp or $HOME
+
+> setsebool -P guest_exec_content=off xguest_exec_content=off
+
+```sh
+semanage boolean -l | grep exec_content
+auditadm_exec_content          (on   ,   on)  Allow auditadm to exec content
+guest_exec_content             (off  ,  off)  Allow guest to exec content
+dbadm_exec_content             (on   ,   on)  Allow dbadm to exec content
+xguest_exec_content            (off  ,  off)  Allow xguest to exec content
+secadm_exec_content            (on   ,   on)  Allow secadm to exec content
+logadm_exec_content            (on   ,   on)  Allow logadm to exec content
+user_exec_content              (on   ,   on)  Allow user to exec content
+staff_exec_content             (on   ,   on)  Allow staff to exec content
+sysadm_exec_content            (on   ,   on)  Allow sysadm to exec content
+```
+
+Confine an existing user, mapping to user_u (i.e., no su/sudo or most other setuid/setgid apps)
+
+> semanage login -a -s user_u existinguseralice
+
+
+
+## Folders for services
+
+```sh
+[root@serverd ~]# ls -Zd /var/log/httpd
+drwx------. root root system_u:object_r:httpd_log_t:s0 /var/log/httpd
+```
+Use the semanage fcontext command to add the new rule for /custom/httpd_log .
+```sh
+[root@serverd ~]# semanage fcontext -a -t httpd_log_t \> '/custom/httpd_logs(/.*)?'[root@serverd ~]# 
+```
+Remember to restore the context of the /custom/httpd_logs directory.
+```sh
+[root@serverd ~]# restorecon -Rv /custom/httpd_logs
+restorecon reset /custom/httpd_logs context unconfined_u:object_r:default_t:s0->unconfined_u:object_r:httpd_log_t:s0
+```
+
+ Change the default mapping between the Linux and the SELinux users. Map the Linux users to the user_u SELinux user.
+
+[root@serverd ~]# semanage login -m -s user_u -r s0 __default__[root@serverd ~]# 
+
+To prevent users from running programs in /tmp or their home directory, set the SELinux user_exec_content Boolean to off .
+
+[root@serverd ~]# setsebool -P user_exec_content off
+
 # LUKS and NBDE
 
 When performing automated installations, Kickstart can create encrypted block devices. For automated partitioning, you can specify:
@@ -74,3 +127,89 @@ Similar syntax works for LVM physical volume:
 Note that the passphrase, PASSPHRASE, is stored in the Kickstart profile in plain text, and so
 the Kickstart profile must be secured. If you omit the --passphrase option then the installer
 prompts for the passphrase during installation.
+
+
+> cryptsetup luksFormat /dev/vdb1
+> cryptsetup luksDump /dev/vdb1
+
+The following example decrypts the /dev/vdb1 device and maps it to the example logical device-
+mapper device. To decrypt the partition, the cryptsetup luksOpen command prompts for the
+passphrase used to encrypt it.
+
+> [root@demo ~]# cryptsetup luksOpen /dev/vdb1 example
+
+> cryptsetup luksClose example
+
+
+## Tang server
+
+Associate the LUKS-encrypted partition available on /dev/vdb1 with the Tang servers on serverc and serverd . Configure SSS encryption so that at least two Tang servers must be available to decrypt the partition.
+
+Install the packages required to configure serverb as a Clevis client.
+
+> [root@serverb ~]# yum install clevis clevis-luks clevis-dracut
+> ...output omitted...
+
+Associate the LUKS-encrypted partition available on /dev/vdb1 with the Tang servers on serverc , and serverd . Configure the SSS encryption so that the two Tang servers must be available to decrypt the partition.
+
+> [root@serverb ~]# cfg=$'{"t":2,"pins":{"tang":[\n> {"url":"http://serverc.lab.example.com"},\n> {"url":"http://serverd.lab.example.com"}]}}'
+
+> [root@serverb ~]# clevis luks bind -d /dev/vdb1 sss "$cfg"
+
+ Enable clevis-luks-askpass.path to support non-root LUKS-encrypted partitions.
+
+```sh
+[root@serverb ~]# systemctl enable clevis-luks-askpass.path
+Created symlink from /etc/systemd/system/remote-fs.target.wants/clevis-luks-askpass.path to /usr/lib/systemd/system/clevis-luks-askpass.path.
+```
+
+# USBGuard
+
+> sudo yum install usbguard
+
+> sudo yum install usbutils udisks2
+
+Rule Targets
+The target of a rule specifies whether the device will be authorized for use or not. Three types of
+target are recognized:
+allow
+Authorize the device. The device and its interfaces will be allowed to communicate with the
+system.
+block
+Do not authorize the device. The device is visible to the system but will remain in a blocked
+state until it is authorized.
+reject
+Deauthorize and remove the device from the system. The device will have to be re-inserted to
+become visible to the system again.
+
+
+> usbguard generate-policy > /etc/usbguard/rules.conf
+> systemctl restart usbguard
+
+```
+usbguard list-devices
+usbguard allow-device 6
+usbguard list-devices
+
+usbguard allow-device -p 6
+systemctl restart usbguard
+
+usbguard block-device ID
+usbguard reject-device ID
+
+usbguard add-user -g usbguard \
+> --devices=modify,list,listen --policy=list --exceptions=listen
+```
+
+
+# PAM
+
+It is highly recommended to configure PAMs using the authconfig tool instead of manually editing the PAM configuration files. 
+
+The man -k pam_ command returns a long list of related man pages.
+
+## SSSD
+
+> yum -y install sssd
+...output omitted...
+> authconfig --enablesssd --enablesssdauth --update
