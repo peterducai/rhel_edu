@@ -62,7 +62,7 @@ Force immediate password expiration by running the following command as root:
 > chage -d 0 username
 
 
-# Selinux users and roles
+# SELINUX
 
 Create a new user that is mapped to guest_u (i.e., no internet, no sudo/su or most other setuid/setgid apps, no X)
 
@@ -117,6 +117,18 @@ To prevent users from running programs in /tmp or their home directory, set the 
 
 [root@serverd ~]# setsebool -P user_exec_content off
 
+
+## Ports
+
+semanage port -a -t http_port_t -p tcp 4242
+
+## Permissive domain
+
+```sh
+semanage permissive -a httpd_t
+semanage permissive -l
+semanage permissive -d httpd_t
+```
 
 ## Summary
 
