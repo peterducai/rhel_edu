@@ -289,6 +289,7 @@ In the /etc/audisp/audisp-remote.conf file, set the remote_server option to the 
 
 serverb.lab.example.com. Set the port to be used on the remote logging server, which is 60 by default.
 
+```
 vi /etc/audisp/audisp-remote.conf
 ...output omitted...
 remote_server = 172.25.250.11
@@ -320,3 +321,6 @@ Open TCP port 60 to enable access to the Audit server.
 Restart the auditd service to update its configuration. When done, log off from serverb.
 
 > service auditd restart
+
+## Reporting
+
