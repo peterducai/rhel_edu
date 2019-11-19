@@ -62,6 +62,8 @@ Create a new user that is mapped to guest_u (i.e., no internet, no sudo/su or mo
 
 > useradd -Z guest_u newuserbob
 
+> userdel -Z -r newuserbob
+
 Make it so guest_u & xguest_u won't be allowed to execute anything in /tmp or $HOME
 
 > setsebool -P guest_exec_content=off xguest_exec_content=off
@@ -108,6 +110,20 @@ restorecon reset /custom/httpd_logs context unconfined_u:object_r:default_t:s0->
 To prevent users from running programs in /tmp or their home directory, set the SELinux user_exec_content Boolean to off .
 
 [root@serverd ~]# setsebool -P user_exec_content off
+
+
+## Summary
+
+> semanage  (port/fcontext/login) -l
+
+Note that system_u is a special user identity for system processes and objects. It must never be associated to a Linux user. Also, unconfined_u and root are unconfined users. For these reasons, they are not included in the aforementioned table of SELinux user capabilities.
+Alongside with the already mentioned SELinux users, there are special roles, that can be mapped to those users. These roles determine what SELinux allows the user to do:
+
+* webadm_r can only administrate SELinux types related to the Apache HTTP Server. See Section 14.2, “Types” for further information.
+* dbadm_r can only administrate SELinux types related to the MariaDB database and the PostgreSQL database management system. See Section 21.2, “Types” and Section 22.2, “Types” for further information.
+* logadm_r can only administrate SELinux types related to the syslog and auditlog processes.
+* secadm_r can only administrate SELinux.
+* auditadm_r can only administrate processes related to the audit subsystem. 
 
 # LUKS and NBDE
 
