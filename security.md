@@ -64,6 +64,16 @@ Force immediate password expiration by running the following command as root:
 
 # SELINUX
 
+# changing default mapping
+
+> semanage login -m -S targeted -s "user_u" -r s0 __default__
+
+to change back
+
+> semanage login -m -S targeted -s "unconfined_u" -r s0-s0:c0.c1023 __default__
+
+# xx
+
 Create a new user that is mapped to guest_u (i.e., no internet, no sudo/su or most other setuid/setgid apps, no X)
 
 > useradd -Z guest_u newuserbob
@@ -101,7 +111,7 @@ drwx------. root root system_u:object_r:httpd_log_t:s0 /var/log/httpd
 ```
 Use the semanage fcontext command to add the new rule for /custom/httpd_log .
 ```sh
-[root@serverd ~]# semanage fcontext -a -t httpd_log_t \> '/custom/httpd_logs(/.*)?'[root@serverd ~]# 
+[root@serverd ~]# semanage fcontext -a -t httpd_log_t \> '/custom/httpd_logs(/.*)?'
 ```
 Remember to restore the context of the /custom/httpd_logs directory.
 ```sh
